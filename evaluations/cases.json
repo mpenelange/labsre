@@ -1,0 +1,8 @@
+[
+  {"scenario_id":"service-stopped","objective":"Why is paperless_web unavailable?","service":"paperless_web","sufficient":true,"action_target":"paperless_web","required_calls":[["get_service_status","paperless_db"],["get_service_logs","paperless_web"]]},
+  {"scenario_id":"routing-failure","objective":"Why is forgejo unreachable?","service":"traefik","sufficient":true,"action_target":null,"required_calls":[["get_service_status","forgejo"],["get_service_status","traefik"],["get_service_logs","traefik"]]},
+  {"scenario_id":"unhealthy-dependency","objective":"Investigate homeassistant","service":"mqtt","sufficient":true,"action_target":null,"required_calls":[["get_service_status","mqtt"],["get_service_logs","mqtt"]]},
+  {"scenario_id":"ambiguous-service-failure","objective":"Investigate dashboard","service":"dashboard","sufficient":false,"action_target":null,"required_calls":[["get_service_status","dashboard_db"],["get_service_logs","dashboard"]]},
+  {"scenario_id":"immich-unknown-failure","objective":"Investigate immich_server","service":"immich_server","sufficient":false,"action_target":null,"required_calls":[["get_service_logs","immich_server"]]},
+  {"scenario_id":"immich-restart-loop","objective":"Investigate immich_server","service":"immich_server","sufficient":false,"action_target":null,"required_calls":[["get_filesystem_usage",null],["get_service_logs","immich_server"]]}
+]

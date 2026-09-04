@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 from uuid import uuid4
@@ -29,6 +30,8 @@ def serialize_result(result: dict[str, Any], thread_id: str) -> dict[str, Any]:
         "recommendation": result.get("recommendation"),
         "interrupts": [item.value for item in interrupts],
         "execution_result": result.get("execution_result"),
+        "decision_trace": result.get("decision_trace", []),
+        "tool_calls": result.get("tool_calls", 0),
     }
 
 
@@ -75,4 +78,5 @@ def decide(thread_id: str, decision: ApprovalDecision) -> dict[str, Any]:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     uvicorn.run("labsre.api:app", host="0.0.0.0", port=8000)

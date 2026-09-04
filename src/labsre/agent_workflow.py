@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+from time import perf_counter
 from typing import Any, Literal, TypedDict
 
 from langgraph.checkpoint.memory import InMemorySaver
@@ -19,6 +21,7 @@ READ_TOOLS = (
     "get_service_logs",
     "get_filesystem_usage",
 )
+logger = logging.getLogger("labsre.investigation")
 
 
 class AgentIncidentState(TypedDict, total=False):
@@ -31,6 +34,7 @@ class AgentIncidentState(TypedDict, total=False):
     tool_history: list[str]
     tool_calls: int
     decision: dict[str, Any]
+    decision_trace: list[dict[str, Any]]
     recommendation: dict[str, Any]
     approval_digest: str
     approval_actor: str
@@ -50,6 +54,7 @@ def build_agent_graph(
         services = gateway.list_services(state["scenario_id"])
         observed_at = max((item.observed_at for item in services), default="unknown")
         evidence = Evidence(
+            evidence_id="e0",
             source="list_services",
             summary=f"Discovered {len(services)} services",
             observed_at=observed_at,
@@ -59,6 +64,7 @@ def build_agent_graph(
             "evidence": [evidence.model_dump(mode="json")],
             "tool_history": [],
             "tool_calls": 0,
+            "decision_trace": [],
             "status": "investigating",
         }
 
@@ -71,7 +77,23 @@ def build_agent_graph(
             evidence=state["evidence"],
             available_tools=READ_TOOLS,
         )
-        update: dict[str, Any] = {"decision": decision.model_dump(mode="json")}
+        known = {item["service"] for item in state["evidence"][0]["data"]["services"]}
+        if decision.relevant_service and decision.relevant_service not in known:
+            raise ValueError("planner conclusion targeted an undiscovered service")
+        ids = {item["evidence_id"] for item in state["evidence"]}
+        for hypothesis in decision.hypotheses:
+            if (
+                not set(
+                    (*hypothesis.supporting_evidence_ids, *hypothesis.contradicting_evidence_ids)
+                )
+                <= ids
+            ):
+                raise ValueError("planner cited nonexistent evidence")
+        serialized = decision.model_dump(mode="json")
+        update: dict[str, Any] = {
+            "decision": serialized,
+            "decision_trace": [*state["decision_trace"], serialized],
+        }
         if decision.relevant_service:
             update["relevant_service"] = decision.relevant_service
         return update
@@ -89,19 +111,28 @@ def build_agent_graph(
         request = decision.next_tool
         if request is None or request.name not in READ_TOOLS:
             raise ValueError("planner requested an unavailable diagnostic tool")
-        signature = json.dumps(
-            {"name": request.name, "arguments": request.arguments}, sort_keys=True
-        )
-        if signature in state["tool_history"]:
-            raise ValueError("planner repeated an identical tool request")
-
         scenario_id = state["scenario_id"]
         discovered = state["evidence"][0]["data"]["services"]
         known_services = {item["service"] for item in discovered}
         service = str(request.arguments.get("service", state.get("relevant_service", "")))
+        allowed = set() if request.name == "get_filesystem_usage" else {"service"}
+        if request.name == "get_recent_events":
+            allowed.add("limit")
+        if set(request.arguments) - allowed:
+            raise ValueError("planner supplied unexpected tool arguments")
+        arguments: dict[str, Any] = {"service": service} if allowed else {}
+        if request.name == "get_recent_events":
+            limit = request.arguments.get("limit", 50)
+            if type(limit) is not int or not 1 <= limit <= 100:
+                raise ValueError("event limit must be an integer between 1 and 100")
+            arguments["limit"] = limit
+        signature = json.dumps({"name": request.name, "arguments": arguments}, sort_keys=True)
+        if signature in state["tool_history"]:
+            raise ValueError("planner repeated an identical tool request")
         if request.name != "get_filesystem_usage" and service not in known_services:
             raise ValueError(f"planner targeted an undiscovered service: {service}")
 
+        started = perf_counter()
         if request.name == "get_service_status":
             value: Any = gateway.get_service_status(scenario_id, service).model_dump(mode="json")
         elif request.name == "get_service_dependencies":
@@ -122,15 +153,26 @@ def build_agent_graph(
             ]
         else:
             value = [
-                item.model_dump(mode="json")
-                for item in gateway.get_filesystem_usage(scenario_id)
+                item.model_dump(mode="json") for item in gateway.get_filesystem_usage(scenario_id)
             ]
 
         evidence = Evidence(
+            evidence_id=f"e{len(state['evidence'])}",
             source=request.name,
             summary=request.purpose,
             observed_at=_observation_time(value),
             data={"service": service or None, "result": value},
+        )
+        logger.info(
+            json.dumps(
+                {
+                    "event": "tool_completed",
+                    "incident_id": state["incident_id"],
+                    "tool": request.name,
+                    "duration_ms": round((perf_counter() - started) * 1000, 2),
+                    "evidence_id": evidence.evidence_id,
+                }
+            )
         )
         return {
             "evidence": [*state["evidence"], evidence.model_dump(mode="json")],
@@ -163,9 +205,7 @@ def build_agent_graph(
             action=action,
             requires_approval=action is not None,
         )
-        update: dict[str, Any] = {
-            "recommendation": recommendation.model_dump(mode="json")
-        }
+        update: dict[str, Any] = {"recommendation": recommendation.model_dump(mode="json")}
         if action:
             update["approval_digest"] = action_digest(state["incident_id"], action)
         else:
@@ -185,8 +225,9 @@ def build_agent_graph(
                 "diagnosis": state["recommendation"]["diagnosis"],
             }
         )
-        approved = bool(response.get("approved"))
-        actor = str(response.get("actor", "")).strip()
+        approved = response.get("approved") is True
+        actor = response.get("actor", "")
+        actor = actor.strip() if isinstance(actor, str) else ""
         return Command(
             update={
                 "status": "approved" if approved and actor else "rejected",
@@ -228,7 +269,9 @@ def build_agent_graph(
     builder.add_edge("execute", "verify")
     builder.add_edge("verify", END)
     builder.add_edge("stop", END)
-    return builder.compile(checkpointer=InMemorySaver())
+    return builder.compile(checkpointer=InMemorySaver()).with_config(
+        {"recursion_limit": 3 * max_tool_calls + 12}
+    )
 
 
 def _observation_time(value: Any) -> str:

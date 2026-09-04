@@ -29,6 +29,7 @@ dev = [
 labsre-api = "labsre.api:main"
 labsre-mcp = "labsre.mcp_server:main"
 labsre-dummy-engine = "labsre.dummy_engine:main"
+labsre-evaluate = "labsre.evaluate:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/labsre"]

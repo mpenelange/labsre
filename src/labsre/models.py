@@ -80,6 +80,7 @@ class FilesystemUsage(BaseModel):
 
 
 class Evidence(BaseModel):
+    evidence_id: str = ""
     source: str
     summary: str
     observed_at: str

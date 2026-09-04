@@ -1,3 +1,5 @@
+name: labsre-dummy
+
 services:
   dummy-engine:
     build: .
