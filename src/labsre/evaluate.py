@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
+
+from pydantic import ValidationError
 
 from labsre.agent_workflow import build_agent_graph
 from labsre.planner import HeuristicPlanner, Planner
@@ -52,10 +56,20 @@ def evaluate_case(case: dict, scenario_dir: Path, planner: Planner) -> dict:
             "recommendation": result["recommendation"],
         }
     except Exception as exc:
+        snapshot = graph.get_state({"configurable": {"thread_id": incident_id}})
         return {
             "scenario_id": case["scenario_id"],
             "passed": False,
             "error_type": type(exc).__name__,
+            "validation_errors": (
+                exc.errors(include_input=False, include_context=False)
+                if isinstance(exc, ValidationError)
+                else []
+            ),
+            "elapsed_ms": round((perf_counter() - started) * 1000, 2),
+            "tool_calls": snapshot.values.get("tool_calls", 0),
+            "decision_trace": snapshot.values.get("decision_trace", []),
+            "evidence": snapshot.values.get("evidence", []),
         }
 
 
@@ -69,8 +83,6 @@ def main() -> None:
     args = parser.parse_args()
     factory = HeuristicPlanner
     if args.llm:
-        import os
-
         from labsre.runtime import build_planner
 
         if not os.getenv("LABSRE_MODEL"):
@@ -79,11 +91,20 @@ def main() -> None:
     cases = json.loads(args.cases.read_text())
     if not cases:
         parser.error("evaluation requires at least one case")
-    rows = [evaluate_case(case, args.scenarios, factory()) for case in cases]
+    rows = []
+    for index, case in enumerate(cases, start=1):
+        print(f"[{index}/{len(cases)}] {case['scenario_id']}", file=sys.stderr, flush=True)
+        row = evaluate_case(case, args.scenarios, factory())
+        rows.append(row)
+        print(f"  {'PASS' if row['passed'] else 'FAIL'}", file=sys.stderr, flush=True)
     print(
         json.dumps(
             {
                 "planner": "llm" if args.llm else "heuristic",
+                "model": os.getenv("LABSRE_MODEL") if args.llm else None,
+                "structured_output": (
+                    os.getenv("LABSRE_STRUCTURED_OUTPUT", "json_schema") if args.llm else None
+                ),
                 "cases": len(rows),
                 "passed": sum(row["passed"] for row in rows),
                 "pass_rate": sum(row["passed"] for row in rows) / len(rows),

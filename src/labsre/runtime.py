@@ -28,7 +28,25 @@ def build_planner() -> Planner:
         raise RuntimeError(
             "LABSRE_MODEL requires the LLM extra: uv sync --extra llm"
         ) from exc
-    return LangChainPlanner(ChatOpenAI(model=model_name, temperature=0))
+    method = os.getenv("LABSRE_STRUCTURED_OUTPUT", "json_schema")
+    if method not in {"json_schema", "function_calling"}:
+        raise ValueError("LABSRE_STRUCTURED_OUTPUT must be json_schema or function_calling")
+    options = {
+        "model": model_name,
+        "temperature": 0,
+        "timeout": float(os.getenv("LABSRE_LLM_TIMEOUT", "120")),
+        "max_retries": 0,
+        "max_tokens": int(os.getenv("LABSRE_LLM_MAX_TOKENS", "4096")),
+    }
+    base_url = os.getenv("LABSRE_LLM_BASE_URL")
+    if base_url:
+        options["base_url"] = base_url
+    if base_url and base_url.rstrip("/") == "https://openrouter.ai/api/v1":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise RuntimeError("OpenRouter requires OPENROUTER_API_KEY in the environment")
+        options["api_key"] = api_key
+    return LangChainPlanner(ChatOpenAI(**options), method=method)
 
 
 def build_gateway() -> OperationsGateway:

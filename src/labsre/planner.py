@@ -51,6 +51,20 @@ class InvestigationDecision(BaseModel):
         return self
 
 
+class PlannerOutput(InvestigationDecision):
+    """Wire contract: the model must explicitly choose to continue or stop."""
+
+    next_tool: ToolRequest | None = Field(
+        description="The next diagnostic call, or null only when stopping investigation."
+    )
+    relevant_service: str | None = Field(
+        description="Exact discovered service being investigated, or null if none exists."
+    )
+    hypotheses: tuple[Hypothesis, ...] = Field(
+        description="Current hypotheses with evidence references; an empty array is allowed."
+    )
+
+
 @runtime_checkable
 class Planner(Protocol):
     """Provider-neutral interface for one bounded investigation decision."""
@@ -110,8 +124,15 @@ class ScriptedPlanner:
 class LangChainPlanner:
     """Strict structured-output adapter for any LangChain-compatible chat model."""
 
-    def __init__(self, model: BaseChatModel) -> None:
-        self._model = model.with_structured_output(InvestigationDecision)
+    def __init__(
+        self,
+        model: BaseChatModel,
+        *,
+        method: Literal["json_schema", "function_calling"] = "json_schema",
+    ) -> None:
+        # Let Pydantic validate the JSON representation, not LangChain's decoded Python
+        # lists: strict tuple fields accept JSON arrays but reject Python lists.
+        self._model = model.with_structured_output(PlannerOutput.model_json_schema(), method=method)
 
     def decide(
         self,
@@ -152,6 +173,12 @@ class LangChainPlanner:
                         "Use evidence_id values when citing evidence. Inspect dependencies when "
                         "the application is healthy or its logs point upstream. A completed "
                         "checklist is not proof of a cause. Abstain when evidence is ambiguous."
+                        " If you need more evidence, populate next_tool with name, arguments, "
+                        "and purpose, and set evidence_sufficient=false. Describing an intended "
+                        "call in reasoning_summary does not execute it. Always populate "
+                        "relevant_service with the exact discovered service being investigated. "
+                        "Set next_tool=null only to finish or abstain. Keep reasoning_summary "
+                        "under 500 characters and situation_summary under 1000 characters."
                     )
                 ),
                 HumanMessage(content=json.dumps(prompt, sort_keys=True)),
@@ -159,7 +186,7 @@ class LangChainPlanner:
         )
         if isinstance(result, InvestigationDecision):
             return result
-        return InvestigationDecision.model_validate_json(json.dumps(result))
+        return PlannerOutput.model_validate_json(json.dumps(result))
 
 
 class HeuristicPlanner:
