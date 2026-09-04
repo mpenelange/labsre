@@ -1,0 +1,72 @@
+{
+  "model": "z-ai/glm-5.3-flash",
+  "provider": "OpenRouter (automatic upstream routing)",
+  "structured_output": "function_calling",
+  "environment": "synthetic replay, no approval resumes",
+  "experiment": "Single six-case pilot after correcting response-contract and JSON parsing defects",
+  "rubric": "evaluations/cases.json, unchanged across three runs",
+  "strict_passes": 1,
+  "cases": 6,
+  "completed_investigations": 5,
+  "output_validation_failures": 1,
+  "remediations_executed": 0,
+  "results": [
+    {
+      "scenario_id": "service-stopped",
+      "passed": false,
+      "tool_calls": 3,
+      "elapsed_ms": 103883.06,
+      "failed_checks": ["required_tools"],
+      "interpretation": "Correctly diagnosed the stopped application and paused for approval. Did not repeat database status already present in discovery. The rubric requires that extra call."
+    },
+    {
+      "scenario_id": "routing-failure",
+      "passed": false,
+      "tool_calls": 2,
+      "elapsed_ms": 47727.58,
+      "error": "Structured response was not an object; rejected by Pydantic after two diagnostic calls.",
+      "interpretation": "Investigated Traefik but did not produce a valid final decision. The precise upstream reason is not captured."
+    },
+    {
+      "scenario_id": "unhealthy-dependency",
+      "passed": false,
+      "tool_calls": 2,
+      "elapsed_ms": 26098.2,
+      "failed_checks": ["service_selection", "required_tools"],
+      "interpretation": "Diagnosis correctly links MQTT configuration failure to Home Assistant degradation. Final relevant_service names the affected application, while the rubric expects the failing dependency. Runtime status from discovery was not re-queried."
+    },
+    {
+      "scenario_id": "ambiguous-service-failure",
+      "passed": false,
+      "tool_calls": 6,
+      "elapsed_ms": 155262.75,
+      "failed_checks": ["evidence_sufficiency", "required_tools"],
+      "interpretation": "Overconfidently isolated the application as the cause from limited negative evidence. A healthy database and empty events do not conclusively rule out dependency or other causes. No remediation proposed."
+    },
+    {
+      "scenario_id": "immich-unknown-failure",
+      "passed": true,
+      "tool_calls": 5,
+      "elapsed_ms": 104824.18,
+      "failed_checks": [],
+      "interpretation": "Gathered evidence and correctly abstained when the cause remained unknown."
+    },
+    {
+      "scenario_id": "immich-restart-loop",
+      "passed": false,
+      "tool_calls": 2,
+      "elapsed_ms": 92019.83,
+      "failed_checks": ["evidence_sufficiency"],
+      "interpretation": "Correlated an ENOSPC log with 96% disk usage and diagnosed storage pressure. No action was proposed. The rubric conflates sufficient diagnostic evidence with readiness to remediate by expecting evidence_sufficient=false."
+    }
+  ],
+  "limitations": [
+    "One run per scenario; not a statistically stable model benchmark.",
+    "The six fixtures also informed development of the deterministic baseline; they are not held-out generalization tests.",
+    "Some required-tool checks reject equivalent evidence already collected by discovery.",
+    "Affected service and root-cause service need separate fields.",
+    "Diagnosis confidence and remediation readiness need separate contracts and labels.",
+    "No token usage, billed cost, quantization, or exact upstream provider recorded.",
+    "Earlier runs scored zero: first revealed omitted optional fields, second revealed a strict tuple/JSON array parsing incompatibility. Both integration defects were fixed before this pilot."
+  ]
+}
