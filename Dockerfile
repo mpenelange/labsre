@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     LABSRE_SCENARIO_DIR=/app/scenarios
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY pyproject.toml ./
 COPY src ./src
 COPY scenarios ./scenarios
 RUN pip install --no-cache-dir .

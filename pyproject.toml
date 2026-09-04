@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "labsre"
 version = "0.1.0"
 description = "A human-governed, agentic incident responder for a homelab"
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",
@@ -40,4 +39,3 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-
