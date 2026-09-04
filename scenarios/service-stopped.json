@@ -1,0 +1,76 @@
+{
+  "scenario_id": "service-stopped",
+  "services": {
+    "paperless_web": {
+      "service": "paperless_web",
+      "state": "exited",
+      "health": "unhealthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-04T14:00:00Z"
+    },
+    "paperless_db": {
+      "service": "paperless_db",
+      "state": "running",
+      "health": "healthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-04T14:00:00Z"
+    }
+  },
+  "logs": {
+    "paperless_web": [
+      {
+        "service": "paperless_web",
+        "timestamp": "2026-09-04T13:57:12Z",
+        "severity": "warning",
+        "message": "application process exited cleanly and was not restarted"
+      }
+    ]
+  },
+  "filesystems": [
+    {
+      "host": "docker",
+      "mount": "/",
+      "used_percent": 48.0,
+      "available_gb": 112.0,
+      "observed_at": "2026-09-04T14:00:00Z"
+    }
+  ],
+  "service_catalog": {
+    "paperless_web": {
+      "service": "paperless_web",
+      "display_name": "Paperless-ngx",
+      "description": "Document management web application",
+      "project": "paperless",
+      "criticality": "medium",
+      "user_facing": true,
+      "dependencies": ["paperless_db"],
+      "tags": ["documents"]
+    },
+    "paperless_db": {
+      "service": "paperless_db",
+      "description": "Database for Paperless-ngx",
+      "project": "paperless",
+      "criticality": "high",
+      "dependencies": [],
+      "tags": ["database"]
+    }
+  },
+  "dependencies": {
+    "paperless_web": [
+      {"service": "paperless_web", "dependency": "paperless_db", "required": true}
+    ]
+  },
+  "events": {
+    "paperless_web": [
+      {
+        "service": "paperless_web",
+        "timestamp": "2026-09-04T13:57:12Z",
+        "event_type": "container_died",
+        "message": "container exited and remained stopped"
+      }
+    ]
+  },
+  "allowed_actions": {
+    "restart_service": ["paperless_web"]
+  }
+}

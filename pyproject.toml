@@ -9,6 +9,7 @@ description = "A human-governed, agentic incident responder for a homelab"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",
+  "langchain-core>=1.4,<2",
   "langgraph>=1.0,<2",
   "mcp>=1.20,<2",
   "pydantic>=2.10,<3",
@@ -16,6 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+llm = ["langchain-openai>=1.1,<2"]
 dev = [
   "httpx>=0.28,<1",
   "pytest>=8.3,<9",

@@ -1,0 +1,85 @@
+{
+  "scenario_id": "routing-failure",
+  "services": {
+    "forgejo": {
+      "service": "forgejo",
+      "state": "running",
+      "health": "healthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-04T16:00:00Z"
+    },
+    "traefik": {
+      "service": "traefik",
+      "state": "running",
+      "health": "unhealthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-04T16:00:00Z"
+    }
+  },
+  "logs": {
+    "forgejo": [
+      {
+        "service": "forgejo",
+        "timestamp": "2026-09-04T15:59:40Z",
+        "severity": "info",
+        "message": "health endpoint returned 200"
+      }
+    ],
+    "traefik": [
+      {
+        "service": "traefik",
+        "timestamp": "2026-09-04T15:59:44Z",
+        "severity": "critical",
+        "message": "router forgejo has no matching backend endpoint"
+      }
+    ]
+  },
+  "filesystems": [
+    {
+      "host": "docker",
+      "mount": "/",
+      "used_percent": 49.0,
+      "available_gb": 110.0,
+      "observed_at": "2026-09-04T16:00:00Z"
+    }
+  ],
+  "service_catalog": {
+    "forgejo": {
+      "service": "forgejo",
+      "display_name": "Forgejo",
+      "description": "Self-hosted Git service",
+      "project": "forgejo",
+      "criticality": "medium",
+      "user_facing": true,
+      "dependencies": ["traefik"],
+      "tags": ["development"]
+    },
+    "traefik": {
+      "service": "traefik",
+      "description": "Reverse proxy and ingress router",
+      "project": "edge",
+      "criticality": "high",
+      "user_facing": true,
+      "dependencies": [],
+      "tags": ["routing", "edge"]
+    }
+  },
+  "dependencies": {
+    "forgejo": [
+      {"service": "forgejo", "dependency": "traefik", "required": true}
+    ]
+  },
+  "events": {
+    "traefik": [
+      {
+        "service": "traefik",
+        "timestamp": "2026-09-04T15:59:44Z",
+        "event_type": "route_error",
+        "message": "Forgejo route lost its backend association"
+      }
+    ]
+  },
+  "allowed_actions": {
+    "restart_service": []
+  }
+}

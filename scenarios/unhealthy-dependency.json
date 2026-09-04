@@ -1,0 +1,85 @@
+{
+  "scenario_id": "unhealthy-dependency",
+  "services": {
+    "homeassistant": {
+      "service": "homeassistant",
+      "state": "running",
+      "health": "unhealthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-04T15:00:00Z"
+    },
+    "mqtt": {
+      "service": "mqtt",
+      "state": "restarting",
+      "health": "unhealthy",
+      "restart_count": 6,
+      "observed_at": "2026-09-04T15:00:00Z"
+    }
+  },
+  "logs": {
+    "homeassistant": [
+      {
+        "service": "homeassistant",
+        "timestamp": "2026-09-04T14:59:31Z",
+        "severity": "critical",
+        "message": "required MQTT dependency unavailable at mqtt:1883"
+      }
+    ],
+    "mqtt": [
+      {
+        "service": "mqtt",
+        "timestamp": "2026-09-04T14:59:28Z",
+        "severity": "critical",
+        "message": "broker configuration validation failed"
+      }
+    ]
+  },
+  "filesystems": [
+    {
+      "host": "docker",
+      "mount": "/",
+      "used_percent": 51.0,
+      "available_gb": 105.0,
+      "observed_at": "2026-09-04T15:00:00Z"
+    }
+  ],
+  "service_catalog": {
+    "homeassistant": {
+      "service": "homeassistant",
+      "display_name": "Home Assistant",
+      "description": "Home automation application",
+      "project": "automation",
+      "criticality": "medium",
+      "user_facing": true,
+      "dependencies": ["mqtt"],
+      "tags": ["automation"]
+    },
+    "mqtt": {
+      "service": "mqtt",
+      "description": "Message broker for home automation devices",
+      "project": "automation",
+      "criticality": "medium",
+      "dependencies": [],
+      "tags": ["broker"]
+    }
+  },
+  "dependencies": {
+    "homeassistant": [
+      {"service": "homeassistant", "dependency": "mqtt", "required": true}
+    ]
+  },
+  "events": {
+    "mqtt": [
+      {
+        "service": "mqtt",
+        "timestamp": "2026-09-04T14:58:55Z",
+        "event_type": "restart",
+        "message": "broker entered a repeated restart cycle",
+        "attributes": {"restart_count": 6}
+      }
+    ]
+  },
+  "allowed_actions": {
+    "restart_service": []
+  }
+}

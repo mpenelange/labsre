@@ -9,7 +9,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
 COPY scenarios ./scenarios
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir '.[llm]'
 
 RUN useradd --create-home --uid 10001 labsre
 USER labsre

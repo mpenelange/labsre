@@ -16,9 +16,13 @@ async def test_mcp_exposes_bounded_diagnostic_tools() -> None:
         tools = await session.list_tools()
         names = {tool.name for tool in tools.tools}
         assert names == {
+            "list_services",
             "get_service_status",
             "get_service_logs",
+            "get_service_dependencies",
+            "get_recent_events",
             "get_filesystem_usage",
+            "get_permitted_actions",
             "restart_service",
         }
 

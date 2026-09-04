@@ -4,6 +4,8 @@ services:
     environment:
       LABSRE_SCENARIO_DIR: /app/scenarios
       LABSRE_MODE: replay
+      LABSRE_MODEL: ${LABSRE_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "127.0.0.1:8000:8000"
     read_only: true
@@ -24,4 +26,3 @@ services:
     security_opt:
       - no-new-privileges:true
     profiles: ["mcp-stdio"]
-

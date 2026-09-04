@@ -20,6 +20,50 @@ class ServiceStatus(BaseModel):
     observed_at: str
 
 
+class ServiceCatalogEntry(BaseModel):
+    """Operator-supplied context that container runtimes cannot reliably infer."""
+
+    service: str
+    display_name: str | None = None
+    description: str | None = None
+    project: str | None = None
+    criticality: str = "unknown"
+    user_facing: bool = False
+    dependencies: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+
+class DiscoveredService(BaseModel):
+    """A runtime observation enriched with optional service-catalog context."""
+
+    service: str
+    state: str
+    health: str | None = None
+    restart_count: int = 0
+    observed_at: str
+    display_name: str | None = None
+    description: str | None = None
+    project: str | None = None
+    criticality: str = "unknown"
+    user_facing: bool = False
+    dependencies: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+
+class ServiceDependency(BaseModel):
+    service: str
+    dependency: str
+    required: bool = True
+
+
+class ServiceEvent(BaseModel):
+    service: str
+    timestamp: str
+    event_type: str
+    message: str
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
 class LogEvent(BaseModel):
     service: str
     timestamp: str
@@ -76,3 +120,6 @@ class Scenario(BaseModel):
     logs: dict[str, list[LogEvent]]
     filesystems: list[FilesystemUsage]
     allowed_actions: dict[str, list[str]]
+    service_catalog: dict[str, ServiceCatalogEntry] = Field(default_factory=dict)
+    dependencies: dict[str, list[ServiceDependency]] = Field(default_factory=dict)
+    events: dict[str, list[ServiceEvent]] = Field(default_factory=dict)

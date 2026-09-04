@@ -1,0 +1,75 @@
+{
+  "scenario_id": "ambiguous-service-failure",
+  "services": {
+    "dashboard": {
+      "service": "dashboard",
+      "state": "running",
+      "health": "unhealthy",
+      "restart_count": 1,
+      "observed_at": "2026-09-04T17:00:00Z"
+    },
+    "dashboard_db": {
+      "service": "dashboard_db",
+      "state": "running",
+      "health": "healthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-04T17:00:00Z"
+    }
+  },
+  "logs": {
+    "dashboard": [
+      {
+        "service": "dashboard",
+        "timestamp": "2026-09-04T16:59:42Z",
+        "severity": "warning",
+        "message": "health probe timed out without a diagnostic error"
+      }
+    ],
+    "dashboard_db": [
+      {
+        "service": "dashboard_db",
+        "timestamp": "2026-09-04T16:59:45Z",
+        "severity": "info",
+        "message": "ready to accept connections"
+      }
+    ]
+  },
+  "filesystems": [
+    {
+      "host": "docker",
+      "mount": "/",
+      "used_percent": 45.0,
+      "available_gb": 120.0,
+      "observed_at": "2026-09-04T17:00:00Z"
+    }
+  ],
+  "service_catalog": {
+    "dashboard": {
+      "service": "dashboard",
+      "display_name": "Dashboard",
+      "description": "User-facing homelab dashboard",
+      "project": "dashboard",
+      "criticality": "low",
+      "user_facing": true,
+      "dependencies": ["dashboard_db"],
+      "tags": ["dashboard"]
+    },
+    "dashboard_db": {
+      "service": "dashboard_db",
+      "description": "Database for the dashboard",
+      "project": "dashboard",
+      "criticality": "medium",
+      "dependencies": [],
+      "tags": ["database"]
+    }
+  },
+  "dependencies": {
+    "dashboard": [
+      {"service": "dashboard", "dependency": "dashboard_db", "required": true}
+    ]
+  },
+  "events": {},
+  "allowed_actions": {
+    "restart_service": []
+  }
+}

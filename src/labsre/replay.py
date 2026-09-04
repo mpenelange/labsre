@@ -4,7 +4,16 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from labsre.models import ExecutionResult, FilesystemUsage, LogEvent, Scenario, ServiceStatus
+from labsre.models import (
+    DiscoveredService,
+    ExecutionResult,
+    FilesystemUsage,
+    LogEvent,
+    Scenario,
+    ServiceDependency,
+    ServiceEvent,
+    ServiceStatus,
+)
 
 
 class ReplayGateway:
@@ -25,6 +34,29 @@ class ReplayGateway:
     def reset(self, scenario_id: str) -> None:
         self._cache.pop(scenario_id, None)
 
+    def list_services(self, scenario_id: str) -> list[DiscoveredService]:
+        scenario = self._load(scenario_id)
+        discovered: list[DiscoveredService] = []
+        for name, status in sorted(scenario.services.items()):
+            catalog = scenario.service_catalog.get(name)
+            explicit_dependencies = scenario.dependencies.get(name, [])
+            dependency_names = [item.dependency for item in explicit_dependencies]
+            if catalog:
+                dependency_names = list(dict.fromkeys([*catalog.dependencies, *dependency_names]))
+            discovered.append(
+                DiscoveredService(
+                    **status.model_dump(),
+                    display_name=catalog.display_name if catalog else None,
+                    description=catalog.description if catalog else None,
+                    project=catalog.project if catalog else None,
+                    criticality=catalog.criticality if catalog else "unknown",
+                    user_facing=catalog.user_facing if catalog else False,
+                    dependencies=dependency_names,
+                    tags=catalog.tags if catalog else [],
+                )
+            )
+        return deepcopy(discovered)
+
     def get_service_status(self, scenario_id: str, service: str) -> ServiceStatus:
         scenario = self._load(scenario_id)
         if service not in scenario.services:
@@ -32,11 +64,45 @@ class ReplayGateway:
         return deepcopy(scenario.services[service])
 
     def get_service_logs(self, scenario_id: str, service: str) -> list[LogEvent]:
-        scenario = self._load(scenario_id)
+        scenario = self._require_service(scenario_id, service)
         return deepcopy(scenario.logs.get(service, []))
+
+    def get_service_dependencies(
+        self, scenario_id: str, service: str
+    ) -> list[ServiceDependency]:
+        scenario = self._require_service(scenario_id, service)
+        dependencies = list(scenario.dependencies.get(service, []))
+        catalog = scenario.service_catalog.get(service)
+        known = {item.dependency for item in dependencies}
+        if catalog:
+            dependencies.extend(
+                ServiceDependency(service=service, dependency=name)
+                for name in catalog.dependencies
+                if name not in known
+            )
+        return deepcopy(dependencies)
+
+    def get_recent_events(
+        self, scenario_id: str, service: str, limit: int = 50
+    ) -> list[ServiceEvent]:
+        if not 1 <= limit <= 100:
+            raise ValueError("event limit must be between 1 and 100")
+        scenario = self._require_service(scenario_id, service)
+        events = sorted(
+            scenario.events.get(service, []), key=lambda item: item.timestamp, reverse=True
+        )
+        return deepcopy(events[:limit])
 
     def get_filesystem_usage(self, scenario_id: str) -> list[FilesystemUsage]:
         return deepcopy(self._load(scenario_id).filesystems)
+
+    def get_permitted_actions(self, scenario_id: str, service: str) -> list[str]:
+        scenario = self._require_service(scenario_id, service)
+        return sorted(
+            action
+            for action, targets in scenario.allowed_actions.items()
+            if service in targets
+        )
 
     def restart_service(self, scenario_id: str, service: str) -> ExecutionResult:
         scenario = self._load(scenario_id)
@@ -60,3 +126,9 @@ class ReplayGateway:
 
     def export_scenario(self, scenario_id: str) -> str:
         return json.dumps(self._load(scenario_id).model_dump(mode="json"), indent=2)
+
+    def _require_service(self, scenario_id: str, service: str) -> Scenario:
+        scenario = self._load(scenario_id)
+        if service not in scenario.services:
+            raise KeyError(f"unknown service: {service}")
+        return scenario

@@ -9,7 +9,7 @@ from langgraph.types import Command
 from pydantic import BaseModel, Field
 
 from labsre.models import ApprovalDecision
-from labsre.runtime import graph
+from labsre.runtime import graph, planner
 
 app = FastAPI(title="LabSRE", version="0.1.0")
 
@@ -17,7 +17,7 @@ app = FastAPI(title="LabSRE", version="0.1.0")
 class InvestigationRequest(BaseModel):
     scenario_id: str = Field(pattern=r"^[a-z0-9-]+$")
     objective: str = Field(min_length=3, max_length=500)
-    service: str = "immich_server"
+    service: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+$")
 
 
 def serialize_result(result: dict[str, Any], thread_id: str) -> dict[str, Any]:
@@ -33,7 +33,11 @@ def serialize_result(result: dict[str, Any], thread_id: str) -> dict[str, Any]:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "mode": "replay"}
+    return {
+        "status": "ok",
+        "mode": "replay",
+        "planner": type(planner).__name__,
+    }
 
 
 @app.post("/incidents/investigate")
@@ -46,7 +50,7 @@ def investigate(request: InvestigationRequest) -> dict[str, Any]:
                 "incident_id": thread_id,
                 "scenario_id": request.scenario_id,
                 "objective": request.objective,
-                "service": request.service,
+                "preferred_service": request.service,
                 "status": "new",
             },
             config=config,
