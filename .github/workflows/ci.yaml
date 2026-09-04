@@ -28,4 +28,13 @@ jobs:
         run: uv build
       - name: Build OCI image
         run: docker build --tag labsre:ci .
-
+      - name: Exercise disposable homelab through MCP
+        run: |
+          trap 'docker compose -f compose.dummy.yaml down --volumes' EXIT
+          docker compose -f compose.dummy.yaml up --build --detach --wait
+          curl --fail --retry 10 --retry-delay 1 --retry-all-errors \
+            --header 'Content-Type: application/json' \
+            --data '{"scenario_id":"dummy","objective":"Investigate why paperless_web is unavailable"}' \
+            http://127.0.0.1:8010/incidents/investigate \
+            --output /tmp/labsre-dummy-result.json
+          python -c "import json; r=json.load(open('/tmp/labsre-dummy-result.json')); assert r['status'] == 'needs_human_investigation'; assert r['recommendation']['evidence'][0]['data']['services'][0]['project'] == 'dummy-homelab'"

@@ -1,0 +1,53 @@
+services:
+  dummy-engine:
+    build: .
+    command: ["labsre-dummy-engine"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:2375/_ping')"
+      interval: 2s
+      timeout: 1s
+      retries: 10
+
+  mcp:
+    build: .
+    command: ["labsre-mcp"]
+    environment:
+      DOCKER_HOST: tcp://dummy-engine:2375
+      LABSRE_MODE: docker-readonly
+      LABSRE_MCP_HOST: 0.0.0.0
+      LABSRE_MCP_PORT: 8001
+      LABSRE_MCP_TRANSPORT: streamable-http
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      dummy-engine:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      LABSRE_MODE: docker-readonly
+      LABSRE_MCP_URL: http://mcp:8001/mcp
+      LABSRE_MODEL: ${LABSRE_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "127.0.0.1:8010:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - mcp
