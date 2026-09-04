@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 
 from labsre.agent_workflow import build_agent_graph
+from labsre.docker_readonly import DockerReadOnlyGateway
+from labsre.gateway import OperationsGateway
+from labsre.mcp_gateway import HttpMcpGateway
 from labsre.planner import HeuristicPlanner, LangChainPlanner, Planner
 from labsre.replay import ReplayGateway
 
@@ -28,6 +31,15 @@ def build_planner() -> Planner:
     return LangChainPlanner(ChatOpenAI(model=model_name, temperature=0))
 
 
-gateway = ReplayGateway(scenario_dir())
+def build_gateway() -> OperationsGateway:
+    if os.getenv("LABSRE_MODE", "replay") == "docker-readonly":
+        return DockerReadOnlyGateway()
+    mcp_url = os.getenv("LABSRE_MCP_URL")
+    if mcp_url:
+        return HttpMcpGateway(mcp_url)
+    return ReplayGateway(scenario_dir())
+
+
+gateway = build_gateway()
 planner = build_planner()
 graph = build_agent_graph(gateway, planner)

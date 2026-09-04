@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 from uuid import uuid4
 
@@ -9,7 +10,7 @@ from langgraph.types import Command
 from pydantic import BaseModel, Field
 
 from labsre.models import ApprovalDecision
-from labsre.runtime import graph, planner
+from labsre.runtime import gateway, graph, planner
 
 app = FastAPI(title="LabSRE", version="0.1.0")
 
@@ -35,7 +36,8 @@ def serialize_result(result: dict[str, Any], thread_id: str) -> dict[str, Any]:
 def health() -> dict[str, str]:
     return {
         "status": "ok",
-        "mode": "replay",
+        "mode": os.getenv("LABSRE_MODE", "replay"),
+        "gateway": type(gateway).__name__,
         "planner": type(planner).__name__,
     }
 

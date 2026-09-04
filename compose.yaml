@@ -4,6 +4,7 @@ services:
     environment:
       LABSRE_SCENARIO_DIR: /app/scenarios
       LABSRE_MODE: replay
+      LABSRE_MCP_URL: http://mcp:8001/mcp
       LABSRE_MODEL: ${LABSRE_MODEL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
@@ -13,6 +14,8 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      - mcp
 
   mcp:
     build: .
@@ -20,9 +23,11 @@ services:
     environment:
       LABSRE_SCENARIO_DIR: /app/scenarios
       LABSRE_MODE: replay
+      LABSRE_MCP_HOST: 0.0.0.0
+      LABSRE_MCP_PORT: 8001
+      LABSRE_MCP_TRANSPORT: streamable-http
     read_only: true
     tmpfs:
       - /tmp
     security_opt:
       - no-new-privileges:true
-    profiles: ["mcp-stdio"]
