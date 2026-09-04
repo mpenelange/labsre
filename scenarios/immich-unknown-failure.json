@@ -1,0 +1,28 @@
+{
+  "scenario_id": "immich-unknown-failure",
+  "services": {
+    "immich_server": {
+      "service": "immich_server",
+      "state": "running",
+      "health": "unhealthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-03T16:00:00Z"
+    }
+  },
+  "logs": {
+    "immich_server": []
+  },
+  "filesystems": [
+    {
+      "host": "docker",
+      "mount": "/",
+      "used_percent": 56.0,
+      "available_gb": 94.0,
+      "observed_at": "2026-09-03T16:00:00Z"
+    }
+  ],
+  "allowed_actions": {
+    "restart_service": ["immich_server"]
+  }
+}
+

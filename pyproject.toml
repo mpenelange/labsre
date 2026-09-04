@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "labsre"
+version = "0.1.0"
+description = "A human-governed, agentic incident responder for a homelab"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "langgraph>=1.0,<2",
+  "mcp>=1.20,<2",
+  "pydantic>=2.10,<3",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.25,<1",
+  "ruff>=0.11,<1",
+]
+
+[project.scripts]
+labsre-api = "labsre.api:main"
+labsre-mcp = "labsre.mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/labsre"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+

@@ -1,0 +1,48 @@
+{
+  "scenario_id": "immich-restart-loop",
+  "services": {
+    "immich_server": {
+      "service": "immich_server",
+      "state": "restarting",
+      "health": "unhealthy",
+      "restart_count": 8,
+      "observed_at": "2026-09-03T15:05:00Z"
+    },
+    "immich_postgres": {
+      "service": "immich_postgres",
+      "state": "running",
+      "health": "healthy",
+      "restart_count": 0,
+      "observed_at": "2026-09-03T15:05:00Z"
+    }
+  },
+  "logs": {
+    "immich_server": [
+      {
+        "service": "immich_server",
+        "timestamp": "2026-09-03T15:04:51Z",
+        "severity": "critical",
+        "message": "thumbnail worker failed: no space left on device"
+      },
+      {
+        "service": "immich_server",
+        "timestamp": "2026-09-03T15:04:55Z",
+        "severity": "warning",
+        "message": "shutting down after worker initialization failure"
+      }
+    ]
+  },
+  "filesystems": [
+    {
+      "host": "docker",
+      "mount": "/",
+      "used_percent": 96.0,
+      "available_gb": 8.4,
+      "observed_at": "2026-09-03T15:05:00Z"
+    }
+  ],
+  "allowed_actions": {
+    "restart_service": ["immich_server"]
+  }
+}
+
