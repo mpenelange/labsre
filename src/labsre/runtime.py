@@ -32,11 +32,11 @@ def build_planner() -> Planner:
 
 
 def build_gateway() -> OperationsGateway:
-    if os.getenv("LABSRE_MODE", "replay") == "docker-readonly":
-        return DockerReadOnlyGateway()
     mcp_url = os.getenv("LABSRE_MCP_URL")
     if mcp_url:
         return HttpMcpGateway(mcp_url)
+    if os.getenv("LABSRE_MODE", "replay") == "docker-readonly":
+        return DockerReadOnlyGateway()
     return ReplayGateway(scenario_dir())
 
 

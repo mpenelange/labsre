@@ -38,7 +38,7 @@ services:
   api:
     build: .
     environment:
-      LABSRE_MODE: docker-readonly
+      LABSRE_MODE: mcp
       LABSRE_MCP_URL: http://mcp:8001/mcp
       LABSRE_MODEL: ${LABSRE_MODEL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
